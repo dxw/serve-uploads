@@ -75,14 +75,15 @@ function serve_upload($req)
 		$attachment_id = get_attachment_id($subdir_file);
 		if ($attachment_id > 0) {
 			$public = get_post_meta($attachment_id, 'public_access', true);
-			if ($public) {
-				$cache_control = "public, max-age=600";
-				serve_upload_file($file, $cache_control);
-			} else {
+			if ($public == 2) {
 				if (is_user_logged_in()) {
 					$cache_control = "private, max-age=600";
 					serve_upload_file($file, $cache_control);
 				}
+			} else {
+				// default to public?
+				$cache_control = "public, max-age=600";
+				serve_upload_file($file, $cache_control);
 			}
 		}
 	}
@@ -122,8 +123,11 @@ add_filter('attachment_fields_to_edit', 'add_public_access_flag', 10, 2);
 
 function add_public_access_flag($form_fields, $post)
 {
-	$public_access = (bool) get_post_meta($post->ID, 'public_access', true);
-	$input = '<input type="checkbox" id="attachments-'.$post->ID.'-public_access" name="attachments['.$post->ID.'][public_access]" value="1"'. checked($public_access, true, false) .'>';
+	$public_access = get_post_meta($post->ID, 'public_access', true);
+	$input = '
+<input type="radio" name="attachments['.$post->ID.'][public_access]" id="public_access_private" value="2"'. checked($public_access, 2, false) .'><label for="public_access_private">Private</label>
+<input type="radio" name="attachments['.$post->ID.'][public_access]" id="public_access_public" value="1"'. checked($public_access, 1, false) .'><label for="public_access_public">Public</label>
+';
 	$form_fields['public_access'] = [
 		'label' => 'Public access',
 		'input' => 'html',
@@ -141,7 +145,5 @@ function save_public_access_flag($attachment_id)
 	if (isset($_REQUEST['attachments'][$attachment_id]['public_access'])) {
 		$public_access = $_REQUEST['attachments'][$attachment_id]['public_access'];
 		update_post_meta($attachment_id, 'public_access', $public_access);
-	} else {
-		delete_post_meta($attachment_id, 'public_access');
 	}
 }
